@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -64,40 +64,6 @@ export default function ExamSessionPage() {
     enabled: !!session?.sessionQuestionIds && session.sessionQuestionIds.length > 0,
   });
 
-  useEffect(() => {
-    if (session && exam) {
-      setAnswers(session.answers || {});
-      setCurrentQuestionIndex(session.currentQuestionIndex || 0);
-
-      const examDurationSeconds = exam.duration * 60;
-      const elapsedSeconds = session.startedAt
-        ? Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000)
-        : 0;
-      const initialTime = session.timeRemaining ?? Math.max(0, examDurationSeconds - elapsedSeconds);
-      setTimeRemaining(initialTime);
-      
-      if (initialTime <= 0) {
-        if (!session.isCompleted) {
-          handleAutoSubmit();
-        }
-        return;
-      };
-
-      const timerId = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(timerId);
-            handleAutoSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timerId);
-    }
-  }, [session, exam, handleAutoSubmit]);
-
   const saveProgressMutation = useMutation({
     mutationFn: async (data: { answers: Record<string, string>; currentQuestionIndex: number }) => {
       return apiRequest("PATCH", `/api/exam-sessions/${sessionId}`, data);
@@ -114,11 +80,46 @@ export default function ExamSessionPage() {
     },
   });
 
-  const handleAutoSubmit = useCallback(() => {
-    if (!submitExamMutation.isPending) {
+  // Initialize exam session state and time
+  useEffect(() => {
+    if (session && exam && !session.isCompleted) {
+      setAnswers(session.answers || {});
+      setCurrentQuestionIndex(session.currentQuestionIndex || 0);
+
+      const examDurationSeconds = exam.duration * 60;
+      const elapsedSeconds = session.startedAt
+        ? Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000)
+        : 0;
+      const initialTime = session.timeRemaining ?? Math.max(0, examDurationSeconds - elapsedSeconds);
+      setTimeRemaining(initialTime);
+    }
+  }, [session, exam]);
+
+  // Handle timer countdown
+  useEffect(() => {
+    if (timeRemaining <= 0 || session?.isCompleted) {
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [session?.isCompleted]);
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (timeRemaining === 0 && !session?.isCompleted && !submitExamMutation.isPending) {
       submitExamMutation.mutate();
     }
-  }, [submitExamMutation]);
+  }, [timeRemaining, session?.isCompleted, submitExamMutation]);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     const newAnswers = { ...answers, [questionId]: answer };
