@@ -39,7 +39,7 @@ if (!firebaseConfig.projectId) {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with offline persistence
-let db: Firestore;
+let db: Firestore | undefined;
 
 try {
     db = initializeFirestore(app, {
@@ -64,3 +64,11 @@ try {
 }
 
 export { app, db, auth };
+
+export function getDb(): Firestore {
+    if (!db) {
+        throw new Error('Firestore has not been initialized.');
+    }
+    return db;
+}
+

@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 import {
     collection,
     getDocs,
@@ -41,12 +41,12 @@ const docToData = <T>(doc: any): T => {
 
 // --- Questions ---
 export const getQuestions = async (): Promise<Question[]> => {
-    const snapshot = await getDocs(collection(db, "questions"));
+    const snapshot = await getDocs(collection(getDb(), "questions"));
     return snapshot.docs.map(d => docToData<Question>(d));
 };
 
 export const getQuestion = async (id: string): Promise<Question | null> => {
-    const d = await getDoc(doc(db, "questions", id));
+    const d = await getDoc(doc(getDb(), "questions", id));
     return d.exists() ? docToData<Question>(d) : null;
 };
 
@@ -63,16 +63,16 @@ export const getQuestionsByIds = async (ids: string[]): Promise<Question[]> => {
 };
 
 export const createQuestion = async (question: InsertQuestion): Promise<Question> => {
-    const ref = await addDoc(collection(db, "questions"), question);
+    const ref = await addDoc(collection(getDb(), "questions"), question);
     return { id: ref.id, ...question } as Question;
 };
 
 export const createQuestionsBulk = async (questions: InsertQuestion[]): Promise<Question[]> => {
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     const created: Question[] = [];
 
     questions.forEach(q => {
-        const ref = doc(collection(db, "questions"));
+        const ref = doc(collection(getDb(), "questions"));
         batch.set(ref, q);
         created.push({ id: ref.id, ...q } as Question);
     });
@@ -82,29 +82,29 @@ export const createQuestionsBulk = async (questions: InsertQuestion[]): Promise<
 };
 
 export const deleteQuestion = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, "questions", id));
+    await deleteDoc(doc(getDb(), "questions", id));
 };
 
 export const deleteQuestionsBulk = async (ids: string[]): Promise<void> => {
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     ids.forEach(id => {
-        batch.delete(doc(db, "questions", id));
+        batch.delete(doc(getDb(), "questions", id));
     });
     await batch.commit();
 };
 
 // --- Exams ---
 export const getExams = async (classLevel?: string): Promise<Exam[]> => {
-    let q = query(collection(db, "exams"));
+    let q = query(collection(getDb(), "exams"));
     if (classLevel) {
-        q = query(collection(db, "exams"), where("classLevel", "==", classLevel));
+        q = query(collection(getDb(), "exams"), where("classLevel", "==", classLevel));
     }
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => docToData<Exam>(d));
 };
 
 export const getExam = async (id: string): Promise<Exam | null> => {
-    const d = await getDoc(doc(db, "exams", id));
+    const d = await getDoc(doc(getDb(), "exams", id));
     if (!d.exists()) return null;
     const data = docToData<Exam>(d);
     return { ...data, questionIds: data.questionIds || [] };
@@ -139,35 +139,35 @@ export const createExam = async (exam: InsertExam): Promise<Exam> => {
         isActive: true
     };
 
-    const ref = await addDoc(collection(db, "exams"), examData);
+    const ref = await addDoc(collection(getDb(), "exams"), examData);
     return { id: ref.id, ...examData } as Exam;
 };
 
 export const updateExam = async (id: string, updates: Partial<Exam>): Promise<void> => {
-    await updateDoc(doc(db, "exams", id), updates);
+    await updateDoc(doc(getDb(), "exams", id), updates);
 };
 
 export const deleteExam = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, "exams", id));
+    await deleteDoc(doc(getDb(), "exams", id));
 };
 
 // --- Students ---
 export const getStudents = async (): Promise<Student[]> => {
-    const snapshot = await getDocs(collection(db, "students"));
+    const snapshot = await getDocs(collection(getDb(), "students"));
     return snapshot.docs.map(d => docToData<Student>(d));
 };
 
 export const createStudent = async (student: InsertStudent): Promise<Student> => {
-    const ref = await addDoc(collection(db, "students"), student);
+    const ref = await addDoc(collection(getDb(), "students"), student);
     return { id: ref.id, ...student } as Student;
 };
 
 export const createStudentsBulk = async (students: InsertStudent[]): Promise<Student[]> => {
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     const created: Student[] = [];
 
     students.forEach(s => {
-        const ref = doc(collection(db, "students"));
+        const ref = doc(collection(getDb(), "students"));
         batch.set(ref, s);
         created.push({ id: ref.id, ...s } as Student);
     });
@@ -177,11 +177,11 @@ export const createStudentsBulk = async (students: InsertStudent[]): Promise<Stu
 };
 
 export const updateStudent = async (id: string, updates: Partial<Student>): Promise<void> => {
-    await updateDoc(doc(db, "students", id), updates);
+    await updateDoc(doc(getDb(), "students", id), updates);
 };
 
 export const deleteStudent = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, "students", id));
+    await deleteDoc(doc(getDb(), "students", id));
 };
 
 export const studentLogin = async (name: string, studentId: string): Promise<Student | null> => {
@@ -194,7 +194,7 @@ export const studentLogin = async (name: string, studentId: string): Promise<Stu
 
 // --- Admin ---
 export const adminLogin = async (username: string, password: string): Promise<User | null> => {
-    const q = query(collection(db, "users"), where("username", "==", username));
+    const q = query(collection(getDb(), "users"), where("username", "==", username));
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
 
@@ -206,7 +206,7 @@ export const adminLogin = async (username: string, password: string): Promise<Us
 
 // --- Exam Sessions ---
 export const getExamSession = async (id: string): Promise<ExamSession | null> => {
-    const d = await getDoc(doc(db, "exam_sessions", id));
+    const d = await getDoc(doc(getDb(), "exam_sessions", id));
     return d.exists() ? docToData<ExamSession>(d) : null;
 };
 
@@ -236,12 +236,12 @@ export const createExamSession = async (session: InsertExamSession): Promise<Exa
         currentQuestionIndex: 0
     };
 
-    const ref = await addDoc(collection(db, "exam_sessions"), sessionData);
+    const ref = await addDoc(collection(getDb(), "exam_sessions"), sessionData);
     return { id: ref.id, ...sessionData } as unknown as ExamSession;
 };
 
 export const updateExamSession = async (id: string, updates: Partial<ExamSession>): Promise<void> => {
-    await updateDoc(doc(db, "exam_sessions", id), updates);
+    await updateDoc(doc(getDb(), "exam_sessions", id), updates);
 };
 
 export const submitExamSession = async (sessionId: string, answers: Record<string, string>): Promise<Result> => {
@@ -249,7 +249,7 @@ export const submitExamSession = async (sessionId: string, answers: Record<strin
     if (!session) throw new Error("Session not found");
 
     if (session.isCompleted) {
-        const q = query(collection(db, "results"), where("sessionId", "==", sessionId));
+        const q = query(collection(getDb(), "results"), where("sessionId", "==", sessionId));
         const snapshot = await getDocs(q);
         if (!snapshot.empty) return docToData<Result>(snapshot.docs[0]);
     }
@@ -299,17 +299,17 @@ export const submitExamSession = async (sessionId: string, answers: Record<strin
         completedAt: new Date()
     };
 
-    const ref = await addDoc(collection(db, "results"), resultData);
+    const ref = await addDoc(collection(getDb(), "results"), resultData);
     return { id: ref.id, ...resultData } as unknown as Result;
 };
 
 // --- Results ---
 export const getResults = async (): Promise<Result[]> => {
-    const snapshot = await getDocs(collection(db, "results"));
+    const snapshot = await getDocs(collection(getDb(), "results"));
     return snapshot.docs.map(d => docToData<Result>(d));
 };
 
 export const getResult = async (id: string): Promise<Result | null> => {
-    const d = await getDoc(doc(db, "results", id));
+    const d = await getDoc(doc(getDb(), "results", id));
     return d.exists() ? docToData<Result>(d) : null;
 };
